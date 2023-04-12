@@ -10,6 +10,7 @@ ARCH=znver2
 
 all:writer.c
 	$(CC) $(CFLAGS) -c -o writer $^
+	chmod 777 writer
 
 #all:writer.c
 #	$(NATIVE_CC) -march=$(ARCH) $^ $(NATIVE_CFLAGS) -o $(TARGET_EXEC) 
