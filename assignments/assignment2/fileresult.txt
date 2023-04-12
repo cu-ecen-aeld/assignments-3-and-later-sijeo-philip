@@ -1,1 +1,1 @@
-writer_aarch64: ELF 64-bit MSB relocatable, ARM aarch64, version 1 (SYSV), not stripped
+writer: ELF 64-bit MSB relocatable, ARM aarch64, version 1 (SYSV), not stripped
