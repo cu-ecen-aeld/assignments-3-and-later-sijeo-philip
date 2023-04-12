@@ -3,7 +3,7 @@ CFLAGS=-Wall
 #CROSS_COMPILE=aarch64_be-none-linux-gnu-
 OBJECTS=writer.o
 CC=gcc
-NATIVE_CC=clang
+NATIVE_CC=gcc
 NATIVE_CFLAGS=-lamdlibm -lm
 ARCH=znver2
 
