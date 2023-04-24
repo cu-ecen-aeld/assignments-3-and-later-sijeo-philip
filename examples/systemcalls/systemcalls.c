@@ -3,7 +3,9 @@
 #include <errno.h>
 #include <unistd.h>
 #include <fcntl.h>
-
+#include <stdlib.h>
+#include <sys/wait.h>
+#include <limits.h>
 /**
  * @param cmd the command to execute with system()
  * @return true if the command in @param cmd was executed
@@ -25,7 +27,7 @@ bool do_system(const char *cmd)
     }
     int ret = system(cmd);
     if (ret != 0){
-	    printf("%s\n",strerror(errno));
+	    perror(strerror(errno));
 	    return false;
     }
 
@@ -75,27 +77,28 @@ bool do_exec(int count, ...)
     fflush(stdout);
     childPid = fork();
     if (-1 == childPid ) {
-	    printf("ERROR: %s\n",strerror(errno));
+	    perror(strerror(errno));
 	    va_end(args);
 	    return false;
     }
 
     if ( 0 == childPid ){
-	    execv(command[0], command);
-	    printf("ERROR: Could not run the command\r\n");
-	    return false;
-    }
+	     execv(command[0], command);
+	     va_end(args);
+	     perror("ERROR: Could not run the command");
+	     exit(-1);
+	}
 
     int retWait = waitpid( childPid, &status, 0);
     if ( -1 == retWait ) {
-	    printf("ERROR: Error occured waiting for child\r\n");
+	    perror("ERROR: Error occured waiting for child");
 	    va_end(args);
 	    return false;
     }
 
     if(WIFEXITED(status)) {
 	    if(WEXITSTATUS(status) != 0) {
-		    printf("ERROR : Child Exited with Non-Zero exit code\r\n");
+		    perror("ERROR : Child Exited with Non-Zero exit code");
 		    va_end(args);
 		    return false;
 	    }
@@ -140,8 +143,8 @@ bool do_exec_redirect(const char *outputfile, int count, ...)
 
     int output_fd = open(outputfile, O_WRONLY|O_CREAT|O_TRUNC, 0644);
     if ( output_fd < 0 ){
-	printf("ERROR: File Could not Open\r\n");
-    	va_end(args)
+	perror("ERROR: File Could not Open");
+    	va_end(args);
 	return false;
     }
 
@@ -165,21 +168,21 @@ bool do_exec_redirect(const char *outputfile, int count, ...)
 		return false;
 	}
 	execv(command[0], command);
-
-	perror("ERROR: Process Creating Failed\r\n");
-	return false;
+	va_end(args);
+	perror("ERROR: Process Creating Failed");
+	exit(-1);
     }
 
     int retWait;
     retWait = waitpid( pid, &status, 0);
     if( -1 == retWait ){
-	    perror("ERROR: Child Process Failed at Wait\r\n");
+	    perror("ERROR: Child Process Failed at Wait");
 	    va_end(args);
 	    return false;
     }
     if (WIFEXITED(status)) {
 	    if(WEXITSTATUS(status) != 0) {
-		    perror("ERROR: Child process exited with non-zero code\r\n");
+		    perror("ERROR: Child process exited with non-zero code");
 		    va_end(args);
 		    return false;
 	    }
