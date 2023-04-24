@@ -1,4 +1,8 @@
 #include "systemcalls.h"
+#include <string.h>
+#include <errno.h>
+#include <unistd.h>
+#include <fcntl.h>
 
 /**
  * @param cmd the command to execute with system()
@@ -16,6 +20,14 @@ bool do_system(const char *cmd)
  *   and return a boolean true if the system() call completed with success
  *   or false() if it returned a failure
 */
+    if( NULL == cmd ){
+	    return false;
+    }
+    int ret = system(cmd);
+    if (ret != 0){
+	    printf("%s\n",strerror(errno));
+	    return false;
+    }
 
     return true;
 }
@@ -47,7 +59,7 @@ bool do_exec(int count, ...)
     command[count] = NULL;
     // this line is to avoid a compile warning before your implementation is complete
     // and may be removed
-    command[count] = command[count];
+    //command[count] = command[count];
 
 /*
  * TODO:
@@ -58,6 +70,39 @@ bool do_exec(int count, ...)
  *   as second argument to the execv() command.
  *
 */
+    pid_t childPid;
+    int status;
+    fflush(stdout);
+    childPid = fork();
+    if (-1 == childPid ) {
+	    printf("ERROR: %s\n",strerror(errno));
+	    va_end(args);
+	    return false;
+    }
+
+    if ( 0 == childPid ){
+	    execv(command[0], command);
+	    printf("ERROR: Could not run the command\r\n");
+	    return false;
+    }
+
+    int retWait = waitpid( childPid, &status, 0);
+    if ( -1 == retWait ) {
+	    printf("ERROR: Error occured waiting for child\r\n");
+	    va_end(args);
+	    return false;
+    }
+
+    if(WIFEXITED(status)) {
+	    if(WEXITSTATUS(status) != 0) {
+		    printf("ERROR : Child Exited with Non-Zero exit code\r\n");
+		    va_end(args);
+		    return false;
+	    }
+    }
+
+
+
 
     va_end(args);
 
@@ -82,7 +127,7 @@ bool do_exec_redirect(const char *outputfile, int count, ...)
     command[count] = NULL;
     // this line is to avoid a compile warning before your implementation is complete
     // and may be removed
-    command[count] = command[count];
+    //command[count] = command[count];
 
 
 /*
@@ -92,6 +137,55 @@ bool do_exec_redirect(const char *outputfile, int count, ...)
  *   The rest of the behaviour is same as do_exec()
  *
 */
+
+    int output_fd = open(outputfile, O_WRONLY|O_CREAT|O_TRUNC, 0644);
+    if ( output_fd < 0 ){
+	printf("ERROR: File Could not Open\r\n");
+    	va_end(args)
+	return false;
+    }
+
+    pid_t pid;
+    int status;
+    fflush(stdout);
+    pid = fork();
+    if (pid == -1){
+	perror("ERROR:fork()");
+	va_end(args);
+	return false;
+    }
+    
+    if (0 == pid){
+	//IN CHILD PROCESS
+	int dupRet = 0;
+        dupRet = dup2(output_fd, 1); /*make file descriptor of the file same as that of stdout (fd =1 )*/
+	if (-1 == dupRet) {
+		perror("ERROR: redirecting failed");
+		va_end(args);
+		return false;
+	}
+	execv(command[0], command);
+
+	perror("ERROR: Process Creating Failed\r\n");
+	return false;
+    }
+
+    int retWait;
+    retWait = waitpid( pid, &status, 0);
+    if( -1 == retWait ){
+	    perror("ERROR: Child Process Failed at Wait\r\n");
+	    va_end(args);
+	    return false;
+    }
+    if (WIFEXITED(status)) {
+	    if(WEXITSTATUS(status) != 0) {
+		    perror("ERROR: Child process exited with non-zero code\r\n");
+		    va_end(args);
+		    return false;
+	    }
+    }
+		    
+    close(output_fd);
 
     va_end(args);
 
