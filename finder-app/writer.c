@@ -11,23 +11,38 @@ extern int errno;
 
 int main (int argc, char *argv[])
 {
-	FILE *fp;
-	openlog("assignment2_logs", LOG_NDELAY|LOG_PERROR|LOG_PERROR, LOG_USER);
+	int fd;
+	openlog(argv[0], LOG_PERROR, LOG_USER);
 	if (argc < 3)
 	{
 		syslog(LOG_ERR, "Command Usage Error: USAGE: writer <FILENAME> <STRING>\n");
+		closelog();
 		return 1;
 	}
 
-	fp = fopen(argv[1], "wb");
-	if ( NULL == fp )
+	fd = open(argv[1], O_CREAT|O_RDWR, S_IRWXU|S_IRWXG|S_IRWXO);
+	if ( -1 == fd )
 	{
 	 syslog(LOG_ERR, "%s",strerror(errno));
+	 closelog();
 	 return 1;
 	}
-	syslog(LOG_DEBUG, "Writing %s to %s", argv[1], argv[2]);
-	fprintf(fp,"%s", argv[2]);
-	fclose(fp);
+	syslog(LOG_DEBUG, "Writing %s to %s", argv[2], argv[1]);
+	size_t bytes_written = write(fd, argv[2], strlen(argv[2]));
+	if(bytes_written == -1)	{
+	   perror("Write to file failed");
+	   close(fd);
+	   closelog();
+	   exit(EXIT_FAILURE);
+	 }
+	 else if(bytes_written != strlen(argv[2])){
+	 perror("Partial Data written to file\n");
+	 close(fd);
+	 closelog();
+	 exit(EXIT_FAILURE);
+	}
+	//syslog(LOG_DEBUG, "Bytes Written: %ld",bytes_written);
+	close(fd);
 	closelog();	
 	return 0;
 }

@@ -1,25 +1,20 @@
-TARGET_EXEC=writer
-CFLAGS=-Wall 
-#CROSS_COMPILE=aarch64_be-none-linux-gnu-
-OBJECTS=writer.o
-CC=gcc
-NATIVE_CC=gcc
-NATIVE_CFLAGS=-lamdlibm -lm
-ARCH=znver2
+
+CFLAGS=-Wall -Werror -O2
+CROSS_COMPILE ?= 
+CC = $(CROSS_COMPILE)gcc
 
 
-#all:writer.c
-#	$(CC) $(CFLAGS) -c -o writer $^
-#	chmod 777 writer
+#Default target: build the writer application
+writer: writer.o
+	$(CC) $(CFLAGS) -o $@ $^
 
-all:writer.c
-	$(NATIVE_CC) -march=$(ARCH) $^ -o $(TARGET_EXEC)
-	chmod 777 writer
+#Compile writer.o from writer.c
+writer.o: writer.c
+	$(CC) $(CFLAGS) -c -o $@ $<
 
-
-clean:	
-	rm -rf *.o $(TARGET_EXEC)
-
+#Clean Target: Remove the application and object files
+clean:
+	rm -f writer *.o
 
 
 

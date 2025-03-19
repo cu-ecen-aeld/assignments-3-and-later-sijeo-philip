@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 filesdir=$1
 searchstr=$2
@@ -24,11 +24,11 @@ do
 
         echo "Searching in ${subfile}"
         matchcount=$(grep -c $searchstr $subfile)
-        if [ $matchcount -gt 0 ]
+	if [ $matchcount -gt 0 ]
         then
-                ((FILENUM=FILENUM+1))
-        fi
-        ((LINEMATCH=LINEMATCH+matchcount))
+		FILENUM=$((FILENUM + 1))
+	fi
+        LINEMATCH=$((LINEMATCH+matchcount))
 done
 
 printf "The number of files are %d and the number of matching lines are %d" "${FILENUM}" "${LINEMATCH}"
