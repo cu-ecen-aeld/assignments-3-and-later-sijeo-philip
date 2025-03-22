@@ -9,6 +9,7 @@ NUMFILES=10
 WRITESTR=AELD_IS_FUN
 WRITEDIR=/tmp/aeld-data
 username=$(cat conf/username.txt)
+OUTPUTFILE=/tmp/assignment4.txt
 
 if [ $# -lt 3 ]
 then
@@ -61,12 +62,12 @@ done
 #FINDPATH=$(find / -name finder.sh)
 #echo "$FINDPATH"
 #chmod +x $FINDPATH
-
+touch "$OUTPUTFILE"
 OUTPUTSTRING=$(./finder.sh "$WRITEDIR" "$WRITESTR")
 #echo "WRITEDIR: $WRITEDIR , WRITESTR: $WRITESTR \n"
 #echo "OUTPUTSTRING: $OUTPUTSTRING \n"
 # remove temporary directories
-
+echo "$OUTPUTSTRING" > $OUTPUTFILE
 rm -rf /tmp/aeld-data
 
 set +e
