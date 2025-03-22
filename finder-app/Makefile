@@ -5,6 +5,8 @@ CC = $(CROSS_COMPILE)gcc
 
 
 #Default target: build the writer application
+all: writer
+
 writer: writer.o
 	$(CC) $(CFLAGS) -o $@ $^
 
