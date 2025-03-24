@@ -56,14 +56,14 @@ fi
 
 for i in $( seq 1 $NUMFILES)
 do
-	./writer "$WRITEDIR/${username}$i.txt" "$WRITESTR"
+	writer "$WRITEDIR/${username}$i.txt" "$WRITESTR"
 done
 
 #FINDPATH=$(find / -name finder.sh)
 #echo "$FINDPATH"
 #chmod +x $FINDPATH
 touch "$OUTPUTFILE"
-OUTPUTSTRING=$(./finder.sh "$WRITEDIR" "$WRITESTR")
+OUTPUTSTRING=$(finder.sh "$WRITEDIR" "$WRITESTR")
 #echo "WRITEDIR: $WRITEDIR , WRITESTR: $WRITESTR \n"
 #echo "OUTPUTSTRING: $OUTPUTSTRING \n"
 # remove temporary directories
