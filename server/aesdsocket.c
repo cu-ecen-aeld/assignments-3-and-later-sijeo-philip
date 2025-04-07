@@ -104,14 +104,14 @@ void write_timestamp(void)
 void *timer_thread_func (void *arg)
 {
 	(void)arg; //unused
-	write_timestamp();
-
+	
 	while( !exit_requested ) {
 		sleep(10);
 		if(exit_requested)
 			break;
 		write_timestamp();
 	}
+
 	return NULL;
 }
 
@@ -181,9 +181,9 @@ void *connection_handler (void *arg)
 		}
 		pthread_mutex_unlock(&file_mutex);
 	}
-
 	close(client_fd);
 	syslog(LOG_INFO, "Closed connection from %s", client_ip);
+
 	return NULL;
 }
 
@@ -275,7 +275,7 @@ int main (int argc, char *argv[])
 			exit(EXIT_FAILURE);
 		}
 	}
-
+	unlink(DATA_FILE);
 	/* Listen for incoming connections */
 	ret = listen( server_fd, BACKLOG);
 	if ( ret == -1 ){
