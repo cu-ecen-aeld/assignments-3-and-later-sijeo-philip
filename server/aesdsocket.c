@@ -361,7 +361,7 @@ int main (int argc, char *argv[])
 	pthread_mutex_unlock(&thread_list_mutex);
 
 	/*Remove Data file*/
-	unlink(DATA_FILE);
+	//unlink(DATA_FILE);
 	
 	closelog();
 
