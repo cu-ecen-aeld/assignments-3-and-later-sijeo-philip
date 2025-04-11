@@ -11,7 +11,7 @@ all: $(TARGET)
 
 # Compile the aesdsocket executable from the aesdsocket.c source file.
 $(TARGET): aesdsocket.c
-	$(CC) $(CFLAGS) -o $(TARGET) aesdsocket.c
+	$(CC) $(CFLAGS) -o $(TARGET) aesdsocket.c $(LDFLAGS)
 
 # Clean up the build artifacts
 
