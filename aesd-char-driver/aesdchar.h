@@ -23,11 +23,21 @@
 #  define PDEBUG(fmt, args...) /* not debugging: nothing */
 #endif
 
+/**
+*	struct aesd_dev - Device Structure for AESD char driver
+* @circ_buf: 	Circular buffer holding the last 10 full write commands
+* @lock:	Mutex to protect concurrent access to the device
+* @partial_write_buf: Buffer accumulating user data until newline
+* @partial_write_len: Length of accumulated partial write
+* @cdev: Char device structure
+*/
+
 struct aesd_dev
 {
-    /**
-     * TODO: Add structure(s) and locks needed to complete assignment requirements
-     */
+    struct aesd_circular_buffer circ_buf;
+    struct mutex lock;
+    char *partial_write_buf;
+    size_t partial_write_len;
     struct cdev cdev;     /* Char device structure      */
 };
 
