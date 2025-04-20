@@ -23,6 +23,7 @@
 #include <linux/mutex.h>
 #include <linux/kernel.h>
 #include "aesdchar.h"
+#include "aesd-circular-buffer.h"
 int aesd_major =   0; // use dynamic major
 int aesd_minor =   0;
 
@@ -116,13 +117,13 @@ ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,loff_
    	struct aesd_buffer_entry entry;
    	
    	/* Free overwritten entry if buffer is full */
-   	if ( dev->circ_buff.full ){
+   	if ( dev->circ_buf.full ){
    		uint8_t idx = dev->circ_buf.in_offs;
    		kfree((char*)dev->circ_buf.entry[idx].buffptr);
    	}
    	
    	/*Prepare new entry*/
-   	entry.buffptr = kmalloc(cmd_size, GFP_KERNEL)
+   	entry.buffptr = kmalloc(cmd_size, GFP_KERNEL);
    	if( !entry.buffptr ){
    		kfree(new_buf);
    		mutex_unlock(&dev->lock);
@@ -219,7 +220,7 @@ void aesd_cleanup_module(void)
     cdev_del(&aesd_device.cdev);
 
     /*Free all stored enteries*/
-    AESD_CIRCULAR_BUFFER_FOREACH(entry, &aesd_device.circ_buf, index)
+    AESD_CIRCULAR_BUFFER_FOREACH(entry, &aesd_device.circ_buf, index);
     kfree((char*)entry->buffptr);
 
     unregister_chrdev_region(devno, 1);
