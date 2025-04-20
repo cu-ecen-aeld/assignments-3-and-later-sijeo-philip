@@ -7,6 +7,11 @@
  *
  */
 
+ #ifndef USE_AESD_CHAR_DEVICE
+ #define USE_AESD_CHAR_DEVICE 	1
+ #endif
+
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -28,7 +33,13 @@
 #define PORT "9000"
 #define BACKLOG 10	
 #define BUFFER_SIZE  1024
+
+#if USE_AESD_CHAR_DEVICE
+#define DATA_FILE "/dev/aesdchar"
+#else
 #define DATA_FILE "/var/tmp/aesdsocketdata"
+#endif
+
 
 volatile sig_atomic_t exit_requested = 0;
 int server_fd = -1;
@@ -76,6 +87,8 @@ void add_thread_node(pthread_t thread_id)
 	pthread_mutex_unlock(&thread_list_mutex);
 }
 
+#if !USE_AESD_CHAR_DEVICE
+
 void write_timestamp(void)
 {
 	time_t now = time(NULL);
@@ -114,6 +127,9 @@ void *timer_thread_func (void *arg)
 
 	return NULL;
 }
+
+#endif
+
 
 /* Thread function for handling a client connection */
 void *connection_handler (void *arg) 
@@ -275,7 +291,10 @@ int main (int argc, char *argv[])
 			exit(EXIT_FAILURE);
 		}
 	}
+	#if !USE_AESD_CHAR_DEVICE
 	unlink(DATA_FILE);
+	#endif 
+
 	/* Listen for incoming connections */
 	ret = listen( server_fd, BACKLOG);
 	if ( ret == -1 ){
@@ -284,6 +303,7 @@ int main (int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
+	#if !USE_AESD_CHAR_DEVICE
 	/*Create the timer thread*/
 	pthread_t timer_thread;
 	if( pthread_create(&timer_thread, NULL, timer_thread_func, NULL) != 0) {
@@ -291,6 +311,7 @@ int main (int argc, char *argv[])
 		close(server_fd);
 		exit(EXIT_FAILURE);
 	}
+	#endif
 
 	/* Main accept loop */
 	while( !exit_requested ) {
@@ -345,8 +366,10 @@ int main (int argc, char *argv[])
 		close(server_fd);
 	}
 
+	#if !USE_AESD_CHAR_DEVICE
 	/*Wait for the thread timer to finish */
 	pthread_join(timer_thread, NULL);
+	#endif
 
 	/* Join all connection threads using the queue.h list */
 	pthread_mutex_lock(&thread_list_mutex);
