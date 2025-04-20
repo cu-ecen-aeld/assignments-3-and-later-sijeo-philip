@@ -87,86 +87,89 @@ ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,loff_
     ssize_t retval = -ENOMEM;
     char *new_buf;
     size_t new_size;
-    
-    if( mutex_lock_interruptible(&dev->lock))
-    	return -ERESTARTSYS;
-    	
-    /* Accumulate Incoming data */
+
+    if ( mutex_lock_interruptible(&dev->lock) )
+	    return -ERESTARTSYS;
+
+    /* Accumulate incoming data */
     new_size = dev->partial_write_len + count;
     new_buf = kmalloc(new_size, GFP_KERNEL);
-    if( !new_buf ) {
-    	mutex_unlock(&dev->lock);
-    	return -ENOMEM;
-   }
-   if( dev->partial_write_buf )
-   {
-   	memcpy(new_buf, dev->partial_write_buf, dev->partial_write_len);
-   	kfree(dev->partial_write_buf);
-   }
-   if( copy_from_user(new_buf + dev->partial_write_len, buf, count))
-   {
-   kfree(new_buf);
-   mutex_unlock(&dev->lock);
-   return -EFAULT;
-   }
-   
-   /*Check new line termination */
-   char *nl = memchr(new_buf, '\n', new_size);
-   if( nl ){
-   	size_t cmd_size = nl - new_buf + 1;
-   	struct aesd_buffer_entry entry;
-   	
-   	/* Free overwritten entry if buffer is full */
-   	if ( dev->circ_buf.full ){
-   		uint8_t idx = dev->circ_buf.in_offs;
-   		kfree((char*)dev->circ_buf.entry[idx].buffptr);
-   	}
-   	
-   	/*Prepare new entry*/
-   	entry.buffptr = kmalloc(cmd_size, GFP_KERNEL);
-   	if( !entry.buffptr ){
-   		kfree(new_buf);
-   		mutex_unlock(&dev->lock);
-   		return -ENOMEM;
-   	}
-   	entry.size = cmd_size;
-   	memcpy((char*)entry.buffptr, new_buf, cmd_size);
-   	aesd_circular_buffer_add_entry(&dev->circ_buf, &entry);
-   	
-   	/* Save leftover for next partial */
-   	size_t leftover = new_size - cmd_size;
-   	if( leftover ) {
-   		char *left_buf = kmalloc(leftover, GFP_KERNEL);
-   		if (left_buf) {
-   			memcpy(left_buf, new_buf + cmd_size, leftover);
-   			dev->partial_write_buf = left_buf;
-   			dev->partial_write_len = leftover;
-   		}else {
-   			dev->partial_write_buf = NULL;
-   			dev->partial_write_len = 0;
-   		}
-   	}else {
-   		dev->partial_write_buf = NULL;
-   		dev->partial_write_len = 0;
-   	}
-   	kfree(new_buf);
-   }else {
-   	/*No newline yet, keep partial */
-   	dev->partial_write_buf = new_buf;
-   	dev->partial_write_len = new_size;
-   }
-   retval = count;
-   mutex_unlock(&dev->lock);
-   PDEBUG("write %zu bytes with offset %lld",count,*f_pos);
-   return retval;
+    if( !new_buf ){
+	    mutex_unlock(&dev->lock);
+	    return -ENOMEM;
+    }
+
+    if (dev->partial_write_buf ) {
+	    memcpy(new_buf, dev->partial_write_buf, dev->partial_write_len );
+	    kfree(dev->partial_write_buf);
+    }
+
+    if ( copy_from_user( new_buf + dev->partial_write_len, buf, count)) {
+	    kfree( new_buf );
+	    mutex_unlock(&dev->lock);
+	    return -EFAULT;
+    }
+
+    /*Check for new line termination */
+    char *nl = memchr( new_buf, '\n', new_size);
+    if( nl ) {
+	    size_t cmd_size = nl - new_buf + 1;
+	    struct aesd_buffer_entry entry;
+
+	    /*Free overwritten entry if buffer full */
+	    if( dev->circ_buf.full ) {
+		    uint8_t idx = dev->circ_buf.in_offs;
+		    kfree((char*)dev->circ_buf.entry[idx].buffptr);
+	    }
+
+	    /*Prepare new entry*/
+	    entry.buffptr = kmalloc(cmd_size, GFP_KERNEL);
+	    if ( !entry.buffptr ){
+		    kfree(new_buf);
+		    mutex_unlock(&dev->lock);
+		    return -ENOMEM;
+
+	    }
+	    entry.size = cmd_size;
+	    memcpy((char*)entry.buffptr, new_buf, cmd_size);
+	    aesd_circular_buffer_add_entry(&dev->circ_buf, &entry);
+
+	    /* Save leftover for next partial */
+	    size_t leftover = new_size - cmd_size;
+	    if( leftover ) {
+		    char *left_buf = kmalloc(leftover, GFP_KERNEL);
+		    if ( left_buf ){
+			    memcpy(left_buf, new_buf + cmd_size, leftover);
+			    dev->partial_write_buf = left_buf;
+			    dev->partial_write_len = leftover;
+		    }else {
+			    dev->partial_write_buf = NULL;
+			    dev->partial_write_len = 0;
+		    }
+	    }else {
+		    dev->partial_write_buf = NULL;
+		    dev->partial_write_len = 0;
+	    }
+	    kfree(new_buf);
+    } else {
+	    /*No newline yet, keep partial */
+	    dev->partial_write_buf = new_buf;
+	    dev->partial_write_len = new_size;
+    }
+    retval = count;
+    mutex_unlock(&dev->lock);
+    PDEBUG("write %zu bytes with offset %lld\n", count, *f_pos);
+    return retval;
 }
+
+
 struct file_operations aesd_fops = {
     .owner =    THIS_MODULE,
     .read =     aesd_read,
     .write =    aesd_write,
     .open =     aesd_open,
     .release =  aesd_release,
-};
+ };
 
 static int aesd_setup_cdev(struct aesd_dev *dev)
 {
@@ -221,8 +224,23 @@ void aesd_cleanup_module(void)
     cdev_del(&aesd_device.cdev);
 
     /*Free all stored enteries*/
-    AESD_CIRCULAR_BUFFER_FOREACH(entry, &aesd_device.circ_buf, index);
-    kfree((char*)entry->buffptr);
+    AESD_CIRCULAR_BUFFER_FOREACH(entry, &aesd_device.circ_buf, index){
+	    if( entry->buffptr ) {
+		    PDEBUG("Freeing buffer entry at index %u", index);
+		    kfree((char*)entry->buffptr);
+		    entry->buffptr = NULL;
+	    }
+    }
+
+    /*Free the partial write buffer if it exists */
+    if( aesd_device.partial_write_buf ) {
+	    PDEBUG("Freeing partial write buffer ");
+	    kfree(aesd_device.partial_write_buf);
+	    aesd_device.partial_write_buf = NULL;
+    }
+
+    /*Destroy the mutex */
+    mutex_destroy (&aesd_device.lock);
 
     unregister_chrdev_region(devno, 1);
 }
