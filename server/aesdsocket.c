@@ -87,7 +87,7 @@ void add_thread_node(pthread_t thread_id)
 	pthread_mutex_unlock(&thread_list_mutex);
 }
 
-#if !USE_AESD_CHAR_DEVICE
+#if USE_AESD_CHAR_DEVICE == 0
 
 void write_timestamp(void)
 {
@@ -291,7 +291,7 @@ int main (int argc, char *argv[])
 			exit(EXIT_FAILURE);
 		}
 	}
-	#if !USE_AESD_CHAR_DEVICE
+	#if USE_AESD_CHAR_DEVICE == 0
 	unlink(DATA_FILE);
 	#endif 
 
@@ -303,7 +303,7 @@ int main (int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
-	#if !USE_AESD_CHAR_DEVICE
+	#if USE_AESD_CHAR_DEVICE == 0
 	/*Create the timer thread*/
 	pthread_t timer_thread;
 	if( pthread_create(&timer_thread, NULL, timer_thread_func, NULL) != 0) {
@@ -366,7 +366,7 @@ int main (int argc, char *argv[])
 		close(server_fd);
 	}
 
-	#if !USE_AESD_CHAR_DEVICE
+	#if USE_AESD_CHAR_DEVICE == 0
 	/*Wait for the thread timer to finish */
 	pthread_join(timer_thread, NULL);
 	#endif
