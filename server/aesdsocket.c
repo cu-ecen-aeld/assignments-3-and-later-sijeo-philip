@@ -149,6 +149,21 @@ void *connection_handler (void *arg)
 	/*Read from client and write to file*/
 	while((bytes_read = recv(client_fd, recv_buf, BUFFER_SIZE, 0)) > 0) {
 		pthread_mutex_lock(&file_mutex);
+	#if USE_AESD_CHAR_DEVICE
+		int fd = open(DATA_FILE, O_RDWR);
+		if ( fd < 0 ){
+			syslog(LOG_ERR, "open() failed for %s: %s",DATA_FILE, strerror(errno));
+			pthread_mutex_unlock(&file_mutex);
+			break;
+		}
+		if ( write(fd, recv_buf, bytes_read) != bytes_read) {
+			syslog(LOG_ERR, "write() failed: %s", strerror(errno));
+			close(fd);
+			pthread_mutex_unlock(&file_mutex);
+			break;
+		}
+		close(fd);
+	#else
 		FILE *fp = fopen(DATA_FILE, "a+");
 		if (fp == NULL) {
 			syslog(LOG_ERR, "fopen() failed for %s %s",DATA_FILE, strerror(errno));
@@ -163,10 +178,11 @@ void *connection_handler (void *arg)
 			break;
 		}
 		fflush(fp);
+		fclose(fp);
+	#endif
 		/* Check if received data contains a newline */
 		if( memchr(recv_buf, '\n', bytes_read) != NULL )
 			newline_received = 1;
-		fclose(fp);
 		pthread_mutex_unlock(&file_mutex);
 
 		if( newline_received )
@@ -176,15 +192,36 @@ void *connection_handler (void *arg)
 	/* if newline received send back the entire file */
 	if (newline_received ) {
 		pthread_mutex_lock(&file_mutex);
+	#if USE_AESD_CHAR_DEVICE
+		int fd = open(DATA_FILE, O_RDONLY);
+		if (fd < 0) {
+			syslog(LOG_ERR, "open() failed for read %s: %s", DATA_FILE, strerror(errno));
+		} else {
+			char file_buf[BUFFER_SIZE];
+			ssize_t bytes_file;
+			while ((bytes_file = read(fd, file_buf, sizeof(file_buf))) > 0) {
+				ssize_t total = 0;
+				while ( total < bytes_file) {
+					ssize_t sent = send(client_fd, file_buf + total, bytes_file - total, 0);
+					if( sent < 0 ) {
+						syslog(LOG_ERR, "send() failed: %s", strerror(errno));
+						break;
+					}
+					total += sent;
+				}
+			}
+			close(fd);
+		}
+	#else
 		FILE *fp = fopen(DATA_FILE, "r");
 		if (fp != NULL) {
 			char file_buf[BUFFER_SIZE];
 			size_t bytes_file;
 			while(( bytes_file = fread(file_buf, 1, BUFFER_SIZE, fp)) > 0) {
 				size_t total_sent = 0;
-				while (total_sent < bytes_file ) {
+				while (total_sent < (ssize_t)bytes_file ) {
 					ssize_t sent = send(client_fd, file_buf + total_sent, bytes_file - total_sent, 0);
-					if (sent == -1){
+					if (sent < 0){
 						syslog(LOG_ERR, "send() failed: %s", strerror(errno));
 						break;
 					}
@@ -195,6 +232,7 @@ void *connection_handler (void *arg)
 		}else {
 			syslog(LOG_ERR, "fopen() failed for reading %s: %s", DATA_FILE, strerror(errno));
 		}
+	#endif
 		pthread_mutex_unlock(&file_mutex);
 	}
 	close(client_fd);
