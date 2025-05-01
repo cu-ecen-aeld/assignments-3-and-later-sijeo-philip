@@ -81,7 +81,7 @@ ssize_t aesd_read(struct file *filp, char __user *buf, size_t count,
     }
     
     /* Use helper to locate the entry of current offset and copy out data */
-    while ( count > 0 && (entry = aesd_circular_buffer_find_entry_offset_for_fpos(dev->circ_buf, read_offset, &entry_offset)) != NULL) {
+    while ( count > 0 && (entry = aesd_circular_buffer_find_entry_offset_for_fpos(&dev->circ_buf, read_offset, &entry_offset)) != NULL) {
     	bytes_available = entry->size - entry_offset;
     	bytes_to_copy = (count < bytes_available)?count : bytes_available;
     	err = copy_to_user(buf, entry->buffptr + entry_offset, bytes_to_copy);
@@ -153,9 +153,9 @@ ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,loff_
     		new_entry.buffptr = cmd_buf;
     		new_entry.size = cmd_length;
     		/*Add the entry and capture any replaced pointer */
-    		const char *old_cmd = aesd_circular_buffer_add_entry(&dev->circ_buf, &new_entry);
-    		if ( old_cmd )
-    			kfree(old_cmd);
+    		aesd_circular_buffer_add_entry(&dev->circ_buf, &new_entry);
+
+
     	}
     	write_offset += cmd_length;
     }
