@@ -62,7 +62,7 @@ ssize_t aesd_read(struct file *filp, char __user *buf, size_t count,
     size_t bytes_copied = 0;
     int err;
     PDEBUG("read %zu bytes with offset %lld", count, *f_pos);
-    mutex_lock(dev->lock);
+    mutex_lock(&dev->lock);
     //Calculate total size of all enteries in the circular buffer 
     {
     	int i;
@@ -76,17 +76,17 @@ ssize_t aesd_read(struct file *filp, char __user *buf, size_t count,
     }
     
     if ( read_offset >= total_size ) {
-    	mutex_unlock(dev->lock);
+    	mutex_unlock(&dev->lock);
     	return 0; //EOF
     }
     
     /* Use helper to locate the entry of current offset and copy out data */
-    while ( count > 0 && (entry = aesd_circular_buffer_fine_entry_offset_for_fpos(dev->circ_buf, read_offset, &entry_offset)) != NULL) {
+    while ( count > 0 && (entry = aesd_circular_buffer_find_entry_offset_for_fpos(dev->circ_buf, read_offset, &entry_offset)) != NULL) {
     	bytes_available = entry->size - entry_offset;
     	bytes_to_copy = (count < bytes_available)?count : bytes_available;
     	err = copy_to_user(buf, entry->buffptr + entry_offset, bytes_to_copy);
     	if (err != 0 ) {
-    		mutex_unlock(dev->lock);
+    		mutex_unlock(&dev->lock);
     		return -EFAULT;
     	}
     	buf += bytes_to_copy;
@@ -95,7 +95,7 @@ ssize_t aesd_read(struct file *filp, char __user *buf, size_t count,
     	bytes_copied += bytes_to_copy;
     }
     *f_pos = read_offset;
-    mutex_unlock(dev->lock);
+    mutex_unlock(&dev->lock);
     retval = bytes_copied;
     return retval;
 }
@@ -121,30 +121,30 @@ ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,loff_
     	return -EFAULT;
     }
     
-    mutex_lock(dev->lock);
+    mutex_lock(&dev->lock);
     /*Append new data to any existing pending data */
     total_len = dev->partial_write_len + count;
     new_cmd = kmalloc(total_len, GFP_KERNEL);
     if( !new_cmd) {
     	kfree(kern_buf);
-    	mutex_unlock(dev->lock);
+    	mutex_unlock(&dev->lock);
     	return -ENOMEM;
     }
     if ( dev->partial_write_buf ) {
     	memcpy(new_cmd, dev->partial_write_buf, dev->partial_write_len);
     	kfree(dev->partial_write_buf);
     }
-    memcpy(new_cmd + dev->partial_write_size, kern_buf, count);
+    memcpy(new_cmd + dev->partial_write_len, kern_buf, count);
     kfree(kern_buf);
     dev->partial_write_buf = new_cmd;
-    dev->partial_write_size = total_len;
+    dev->partial_write_len = total_len;
     
     /* Process complete commands terminated by \n */
-    while (( newline_ptr = memchr(dev->partial_write_buf + write_offset, '\n', dev->partial_write_size - write_offset )) != NULL ) {
+    while (( newline_ptr = memchr(dev->partial_write_buf + write_offset, '\n', dev->partial_write_len - write_offset )) != NULL ) {
     	size_t cmd_length = newline_ptr - (dev->partial_write_buf + write_offset ) + 1;
-    	char *cmd_buf = kmalloc(cmd_length, GPF_KERNEL);
+    	char *cmd_buf = kmalloc(cmd_length, GFP_KERNEL);
     	if( !cmd_buf ) {
-    		mutex_unlock(dev->lock);
+    		mutex_unlock(&dev->lock);
     		return -ENOMEM;
     	}
     	memcpy(cmd_buf, dev->partial_write_buf + write_offset, cmd_length);
@@ -153,7 +153,7 @@ ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,loff_
     		new_entry.buffptr = cmd_buf;
     		new_entry.size = cmd_length;
     		/*Add the entry and capture any replaced pointer */
-    		const char  *old_cmd = aesd_circular_buffer_add_entry(dev->circ_buf, &new_entry);
+    		const char *old_cmd = aesd_circular_buffer_add_entry(&dev->circ_buf, &new_entry);
     		if ( old_cmd )
     			kfree(old_cmd);
     	}
@@ -165,7 +165,7 @@ ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,loff_
     	size_t leftover = dev->partial_write_len - write_offset;
     	char *temp_buf = kmalloc(leftover, GFP_KERNEL);
     	if (!temp_buf) {
-    		mutex_unlock(dev->lock);
+    		mutex_unlock(&dev->lock);
     		return -ENOMEM;
     	}
     	memcpy(temp_buf, dev->partial_write_buf + write_offset, leftover);
@@ -177,7 +177,7 @@ ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,loff_
     	dev->partial_write_buf = NULL;
     	dev->partial_write_len = 0;
     }
-    mutex_unloc(dev->lock);
+    mutex_unlock(&dev->lock);
     retval = count;
     return retval;
     		
@@ -193,8 +193,8 @@ static loff_t aesd_llseek( struct file *filp, loff_t offset, int whence )
 	
 	PDEBUG("llseek: offset=%lld, whenc=%d", offset, whence);
 	
-	mutex_lock(dev->lock);
-	num_entries dev->circ_buf.full ? AESDCHAR_MAX_WRITE_OPERATIONS_SUPPORTED : (dev->circ_buf.in_offs - dev->circ_buf.out_offs);
+	mutex_lock(&dev->lock);
+	num_entries = dev->circ_buf.full?AESDCHAR_MAX_WRITE_OPERATIONS_SUPPORTED:(dev->circ_buf.in_offs - dev->circ_buf.out_offs);
 	for( i = 0; i < num_entries; i++ ) {
 		int pos = (dev->circ_buf.out_offs + i) % AESDCHAR_MAX_WRITE_OPERATIONS_SUPPORTED;
 		total_size += dev->circ_buf.entry[pos].size;
@@ -210,16 +210,16 @@ static loff_t aesd_llseek( struct file *filp, loff_t offset, int whence )
 			newpos = total_size + offset;
 			break;
 		default:
-			mutex_unlock(dev->lock);
+			mutex_unlock(&dev->lock);
 			return -EINVAL;
 			
 	}
 	if (newpos < 0 || newpos > total_size ) {
-		mutex_unlock(dev->lock);
+		mutex_unlock(&dev->lock);
 		return -EINVAL;
 	}
 	filp->f_pos = newpos;
-	mutex_unlock(dev->lock);
+	mutex_unlock(&dev->lock);
 	return newpos;
 }
 
