@@ -35,11 +35,11 @@
 
 struct aesd_dev
 {
-    struct aesd_circular_buffer circ_buf;
-    struct mutex lock;
-    char *partial_write_buf;
-    size_t partial_write_len;
-    struct cdev cdev;     /* Char device structure      */
+    struct aesd_circular_buffer circ_buf; 	/* Circular Buffer Structure */
+    struct mutex lock;				/* Mutex for thread safety */
+    char *partial_write_buf;			/* Pointer to Dynamic Buffer */
+    size_t partial_write_len;			/* Size of Accumulated data */
+    struct cdev cdev;     			/* Char device structure      */
 };
 
 
