@@ -32,7 +32,7 @@ MODULE_LICENSE("Dual BSD/GPL");
 
 struct aesd_dev aesd_device;
 
-int aesd_open(struct inode *inode, struct file *filp)
+static int aesd_open(struct inode *inode, struct file *filp)
 {
 	// Approach 1 based on "Device Driver File Operations" lecture video
 	// Handles Multiple device opens
@@ -50,7 +50,7 @@ int aesd_open(struct inode *inode, struct file *filp)
 	return 0;
 }
 
-int aesd_release(struct inode *inode, struct file *filp)
+static int aesd_release(struct inode *inode, struct file *filp)
 {
     PDEBUG("release\n");
     /**
@@ -59,7 +59,7 @@ int aesd_release(struct inode *inode, struct file *filp)
     return 0;
 }
 
-ssize_t aesd_read(struct file *filp, char __user *buf, size_t count,
+static ssize_t aesd_read(struct file *filp, char __user *buf, size_t count,
                 loff_t *f_pos)
 {
     ssize_t retval = 0;
@@ -104,7 +104,7 @@ unlock_and_return:
 
 }
 
-ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,loff_t *f_pos)
+static ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,loff_t *f_pos)
 {
     ssize_t retval = -ENOMEM; /* Default return value for allocation failure */
     struct aesd_dev *dev = filp->private_data; /* Get the device structure */
@@ -183,7 +183,7 @@ static int aesd_setup_cdev(struct aesd_dev *dev)
 
 
 
-int aesd_init_module(void)
+static int __init aesd_init_module(void)
 {
     dev_t dev = 0;
     int result;
@@ -212,7 +212,7 @@ int aesd_init_module(void)
 
 }
 
-void aesd_cleanup_module(void)
+static void __exit aesd_cleanup_module(void)
 {
     dev_t devno = MKDEV(aesd_major, aesd_minor);
     uint8_t index = 0;
