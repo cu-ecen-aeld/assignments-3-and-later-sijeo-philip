@@ -117,7 +117,7 @@ void signal_handler( int signal ) {
 }
 
 void *process_connection_thread( void *arg) {
-	struct thread_node_data *tdata = thread_arg;
+	struct thread_node_data *tdata = arg;
 	int client_sockfd = tdata->client_sockfd;
 	char recv_buffer[RECV_BUFFER_SIZE] = {0};
 	ssize_t bytes_received = 0;
@@ -173,7 +173,7 @@ void *process_connection_thread( void *arg) {
 	return NULL;
 }
 
-void *timestamp_thread() {
+void *timestamp_thread_func() {
 	struct timespec next_timestamp;
 	clock_gettime(CLOCK_REALTIME, &next_timestamp); /* Get the current timestamp */
 

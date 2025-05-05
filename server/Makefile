@@ -1,6 +1,6 @@
 
 
-C# Makefile for /server dir
+# Makefile for /server dir
 # Flexible for native and cross-compilation
 
 # Compiler and flags
